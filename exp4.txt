@@ -1,0 +1,84 @@
+#define BLYNK_TEMPLATE_ID "TMPL3WKv0Zi_b"
+#define BLYNK_TEMPLATE_NAME "PWM Speed control"
+#define BLYNK_AUTH_TOKEN "h76QQxBM07VW3mdl9Eu_S9LRdb1XHntw"
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+// Wi-Fi credentials
+char ssid[] = "ENTC04";
+char pass[] = "$inhgad@2122";
+// Motor driver pins
+const int motorPin1 = D1; // IN1
+const int motorPin2 = D2; // IN2
+const int enablePin = D3; // ENA (PWM)
+// Variables
+int motorSpeed = 0; // 0–1023 PWM
+String motorDir = "STOP"; // FORWARD / REVERSE / STOP
+// ------------------- BLYNK FUNCTIONS -------------------
+BLYNK_WRITE(V0) // Slider for speed (0–100)
+{
+ int speedPercent = param.asInt();
+ speedPercent = constrain(speedPercent, 0, 100);
+ motorSpeed = map(speedPercent, 0, 100, 0, 1023);
+ Serial.print("Speed Slider: ");  Serial.print(speedPercent); 
+Serial.println("%");
+ if (motorDir != "STOP") {
+ applyMotor();
+ }
+}
+BLYNK_WRITE(V1) // Forward Button
+{
+ if (param.asInt() == 1) {
+ motorDir = "FORWARD";
+ Serial.println("Motor set to FORWARD");
+ applyMotor();
+ }
+}
+BLYNK_WRITE(V2) // Reverse Button
+{
+ if (param.asInt() == 1) {
+ motorDir = "REVERSE";
+ Serial.println("Motor set to REVERSE");
+ applyMotor();
+ }
+}
+BLYNK_WRITE(V3) // Stop Button
+{
+ if (param.asInt() == 1) {
+ motorDir = "STOP";
+ Serial.println("Motor STOPPED");
+ analogWrite(enablePin, 0);
+ }
+}
+// ------------------- SETUP & LOOP -------------------
+void setup() {
+Serial.begin(115200);
+ pinMode(motorPin1, OUTPUT);
+ pinMode(motorPin2, OUTPUT);
+ pinMode(enablePin, OUTPUT);
+ analogWriteRange(1023);
+ analogWriteFreq(1000);
+ // Start stopped
+ digitalWrite(motorPin1, LOW);
+ digitalWrite(motorPin2, LOW);
+ analogWrite(enablePin, 0);
+ Serial.println("Connecting to Wi-Fi and Blynk...");
+ Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+}
+void loop() {
+ Blynk.run();
+}
+// ------------------- MOTOR FUNCTION -------------------
+void applyMotor() {
+ if (motorDir == "FORWARD") {
+ digitalWrite(motorPin1, HIGH);
+ digitalWrite(motorPin2, LOW);
+ } 
+ else if (motorDir == "REVERSE") {
+ digitalWrite(motorPin1, LOW);
+ digitalWrite(motorPin2, HIGH);
+ }
+ analogWrite(enablePin, motorSpeed);
+ Serial.print("Motor Direction: "); Serial.print(motorDir);
+ Serial.print(" | PWM: "); Serial.println(motorSpeed);
+}
