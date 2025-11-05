@@ -1,0 +1,69 @@
+#include <ESP8266WiFi.h> 
+#include <ESP8266WebServer.h> 
+const char* ssid="ENTC04"; 
+const char* password="$inhgad@2122"; 
+ESP8266WebServer server(80); 
+#define S1 D1 
+#define S2 D2 
+bool loggedIn=false; 
+void setup(){ 
+  Serial.begin(115200); 
+  pinMode(S1,OUTPUT); pinMode(S2,OUTPUT); 
+  digitalWrite(S1,HIGH); digitalWrite(S2,HIGH); 
+  WiFi.begin(ssid,password); 
+  Serial.print("Connecting to WiFi"); 
+  while(WiFi.status()!=WL_CONNECTED){delay(500);Serial.print(".");} 
+  Serial.println("\nConnected!"); 
+  Serial.print("IP Address: "); 
+  Serial.println(WiFi.localIP()); 
+  server.on("/",[](){ 
+    if(!loggedIn){ 
+      server.send(200,"text/html", 
+      "<html><body style='text-align:center;background:#D6EAF8'>" 
+      "<h2>Login</h2>" 
+      "<form action='/login' method='POST'>" 
+      "Username:<input name='u'><br><br>" 
+      "Password:<input type='password' name='p'><br><br>" 
+      "<input type='submit' value='Login'>" 
+      "</form>" 
+      "</body></html>"); 
+    } 
+    else{ 
+      server.send(200,"text/html", 
+      "<html><body style='text-align:center;background:#A9DFBF'>" 
+      "<h2>Home Automation Control</h2>" 
+      "<h3>Switch 1:</h3>" 
+      "<a href='/on1'><button>ON</button></a> " 
+      "<a href='/off1'><button>OFF</button></a><br><br>" 
+      "<h3>Switch 2:</h3>" 
+      "<a href='/on2'><button>ON</button></a> " 
+      "<a href='/off2'><button>OFF</button></a><br><br>" 
+      "<a href='/logout'><button>Logout</button></a>" 
+      "</body></html>"); 
+    } 
+  }); 
+  server.on("/login",[](){ 
+    if(server.arg("u")=="admin" && server.arg("p")=="admin123") 
+      loggedIn=true; 
+    server.sendHeader("Location","/"); 
+    server.send(303); 
+  }); 
+  server.on("/logout",[](){ 
+loggedIn=false; 
+server.sendHeader("Location","/"); 
+server.send(303); 
+}); 
+server.on("/on1",[](){digitalWrite(S1,LOW);server.sendHeader("Location","/");
+ server.send(303);}); 
+server.on("/off1",[](){digitalWrite(S1,HIGH);server.sendHeader("Location","/"
+ );server.send(303);}); 
+server.on("/on2",[](){digitalWrite(S2,LOW);server.sendHeader("Location","/");
+ server.send(303);}); 
+server.on("/off2",[](){digitalWrite(S2,HIGH);server.sendHeader("Location","/"
+ );server.send(303);}); 
+server.begin(); 
+Serial.println("Web server started!"); 
+} 
+void loop(){ 
+server.handleClient(); 
+} 
