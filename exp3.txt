@@ -1,0 +1,82 @@
+
+#define BLYNK_TEMPLATE_ID "TMPL36jrZnpQh"
+#define BLYNK_TEMPLATE_NAME "Interfacing Sensors And Actuators With ESP8266"
+#define BLYNK_AUTH_TOKEN "b_aZa5wq5V5MUnIa4ad9M6RX698hIA33"
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <LiquidCrystal_I2C.h>
+// --- WiFi Credentials ---
+char ssid[] = "OnePlus 11R 5G";
+char pass[] = "YBorse5029";
+// --- LCD Setup (I2C) ---
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Adjust address if needed
+// --- Pin Configuration ---
+#define trigPin D5
+#define echoPin D6
+#define irPin D7
+#define tempPin A0
+// --- Variables ---
+long duration;
+int distance;
+int irValue;
+float temperature;
+// --- Timer for Blynk ---
+BlynkTimer timer;
+// --- Function to read sensors and update LCD/Blynk ---
+void readSensors() {
+  // --- IR Sensor ---
+  int rawIR = digitalRead(irPin); // LOW = object detected (depends on module)
+  if(rawIR == LOW) irValue = 1; // Object detected
+  else irValue = 0; // No object
+  Blynk.virtualWrite(V2, irValue);
+  // --- Ultrasonic Sensor ---
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH, 30000); // 30ms timeout
+  if(duration == 0) distance = 0; // No echo detected or object too close
+  else distance = duration * 0.034 / 2; // Convert to cm
+  // Limit max distance to avoid showing huge numbers
+  if(distance > 400) distance = 400;
+  Blynk.virtualWrite(V1, distance);
+  // --- Temperature Sensor (LM35) ---
+  int adcValue = analogRead(tempPin);
+  float voltage = adcValue * (3.3 / 1023.0); // ESP8266 ADC ref = 3.3V
+  temperature = voltage * 100; // LM35: 10mV per °C
+  Blynk.virtualWrite(V0, temperature);
+  // --- Update LCD Display ---
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("D:");
+  lcd.print(distance);
+  lcd.print("cm ");
+  lcd.print("IR:");
+  lcd.print(irValue);
+  lcd.setCursor(0, 1);
+  lcd.print("T:");
+  lcd.print(temperature);
+  lcd.print("C");
+  // Optional: Send LCD text to Blynk (V3)
+  String lcdData = "D:" + String(distance) + "cm IR:" + String(irValue) + " T:" + String(temperature) + "C";
+  Blynk.virtualWrite(V3, lcdData);
+}
+void setup() {
+  Serial.begin(9600);
+  // --- LCD Init ---
+  lcd.init();
+  lcd.backlight();
+  // --- Pin Modes ---
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(irPin, INPUT);
+  // --- Connect to Blynk ---
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  // --- Run readSensors() every 1 second ---
+  timer.setInterval(1000L, readSensors);
+}
+void loop() {
+  Blynk.run();
+  timer.run();
+}
