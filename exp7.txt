@@ -1,0 +1,18 @@
+#include <SoftwareSerial.h>
+// RX pin 2, TX pin 3
+SoftwareSerial BTSerial(2, 3); 
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Ready to receive AT Commands...");
+  BTSerial.begin(9600);
+}
+void loop() {
+  // Send data from HC-05 to Serial Monitor
+  if (BTSerial.available()) {
+    Serial.write(BTSerial.read());
+  }
+  // Send data from Serial Monitor to HC-05
+  if (Serial.available()) {
+    BTSerial.write(Serial.read());
+  }
+}
