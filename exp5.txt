@@ -1,0 +1,65 @@
+#include <WiFi.h>
+#include "DHT.h"
+#include "HTTPClient.h"
+
+// ====== WiFi Credentials ======
+const char* ssid = "ENTC04";         // your WiFi name
+const char* password = "$inhgad@2122";   // your WiFi password
+
+// ====== ThingSpeak ======
+String apiKey = "5UP8HD2GGD9E0CWG";  // your ThingSpeak Write API key
+const char* server = "http://api.thingspeak.com/update";
+
+// ====== DHT11 Setup ======
+#define DHTPIN 4       // GPIO pin where DHT11 data pin is connected
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n✅ Connected to WiFi");
+  
+  dht.begin();
+}
+
+void loop() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature(); // Celsius
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("❌ Failed to read from DHT11 sensor!");
+    return;
+  }
+
+  Serial.print("🌡 Temperature: ");
+  Serial.print(t);
+  Serial.print(" °C   💧 Humidity: ");
+  Serial.print(h);
+  Serial.println(" %");
+
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = String(server) + "?api_key=" + apiKey + "&field1=" + String(t) + "&field2=" + String(h);
+    http.begin(url);
+
+    int httpCode = http.GET();
+    if (httpCode > 0) {
+      Serial.println("✅ Data sent to ThingSpeak successfully!");
+    } else {
+      Serial.println("❌ Error sending data");
+    }
+    http.end();
+  } else {
+    Serial.println("⚠ WiFi disconnected! Trying to reconnect...");
+    WiFi.begin(ssid, password);
+  }
+
+  delay(20000); // ThingSpeak minimum update interval = 15 seconds
+}
